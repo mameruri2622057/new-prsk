@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project Sekai Rating Calculator</title>
+<style>
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0;font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;
+  background:#fff;color:#222;background-size:cover;background-position:center;background-attachment:fixed;
+}
+:root{--panel-alpha:.78}
+main{max-width:900px;margin:auto;padding:16px}
+.undo-wrap{position:fixed;top:12px;left:12px;z-index:9999;display:flex;gap:6px}.undo-btn{width:38px;height:38px;margin:0;padding:0;font-size:22px;line-height:38px;border-radius:10px}.undo-btn:disabled{opacity:.45;cursor:not-allowed}
+.panel{background:rgba(255,255,255,var(--panel-alpha));backdrop-filter:blur(2px);border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 2px 10px #00000012}
+.header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+h1{font-size:24px;margin:0 0 6px}h2{font-size:18px;margin:0 0 12px}
+.note{font-size:13px;color:#666;line-height:1.6}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{font-size:13px;color:#666;display:block;margin-bottom:4px}
+input,select,button{width:100%;padding:11px;border:1px solid #ccc;border-radius:10px;font-size:16px}
+button{background:#333;color:#fff;border:0;cursor:pointer;margin-top:12px}
+button.secondary{background:#777}button.danger{background:#b33}button.light{background:#eee;color:#222}
+.result{text-align:center;padding:18px;background:#f0f0f3cc;border-radius:12px;margin-top:14px}
+.big{font-size:32px;font-weight:700}.small{color:#666}
+.switch-wrap{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.switch-label{font-size:12px;color:#777}
+.switch{position:relative;width:58px;height:32px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:#ddd;border-radius:999px;cursor:pointer;box-shadow:inset 0 1px 3px #0002}
+.slider:before{content:"";position:absolute;width:26px;height:26px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 1px 4px #0004;transition:.2s}
+.switch input:checked+.slider{background:#ff8cc9}
+.switch input:checked+.slider:before{transform:translateX(26px)}
+.mode-name{font-weight:700;font-size:13px}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;gap:9px;align-items:center;padding:10px 0}
+.row:last-child{border-bottom:0}
+.song-details{grid-column:2/-1;padding:0 0 10px;border-bottom:1px solid #eee}
+.song-name{font-weight:650;min-width:0;overflow-wrap:anywhere}
+.meta{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.badge{padding:4px 9px;border-radius:999px;background:#eee;font-size:12px;font-weight:700;white-space:nowrap}
+.resultline,.sharefactor{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#555;white-space:nowrap}
+.rating{font-weight:800;white-space:nowrap}
+.actions{display:flex;gap:5px}.actions button{width:auto;margin:0;padding:6px 9px;font-size:12px}.actions .move-btn{width:26px;min-width:26px;padding:3px 0;font-size:14px;font-weight:700;margin:0}
+.difficulty-master{background:#ead9ff;color:#6d22a8}.difficulty-expert{background:#ffd9df;color:#c32d45}
+.difficulty-hard{background:#fff0b8;color:#8c6800}.difficulty-normal{background:#d8f5ff;color:#087d9c}
+.difficulty-easy{background:#d9f5df;color:#247b38}.difficulty-append{background:#ffc4e4;color:#bd287b}
+.rank-s{background:linear-gradient(90deg,#ff3b6b,#ffb000,#49d77c,#42bfff,#9b4dff);color:#fff;text-shadow:0 1px 2px #555}
+.rank-a{background:#ffe16b;color:#654d00}.rank-bbb{background:#bfefff;color:#17647a}
+.rank-c{background:#ffd0d0;color:#a40000}.rank-d{background:#ddd;color:#555}
+.rating-green{color:#41a957}.rating-orange{color:#e48a24}.rating-red{color:#df4b4b}.rating-purple{color:#7b4bb7}
+.rating-bronze{color:#b4773f}.rating-silver{color:#888}.rating-gold{color:#d1a92a}
+.rating-platinum{color:#ead9a5}
+.rating-rainbow{background:linear-gradient(180deg,#ff3f5f 0%,#ff9f43 18%,#ffe04b 34%,#58c96b 50%,#43c8e8 66%,#4b78e8 82%,#8a45d6 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.rating-rainbow-plus{background:linear-gradient(180deg,#e9274e 0%,#ed8431 18%,#e8c52f 34%,#42ad59 50%,#31a9ca 66%,#3b5fca 82%,#7433c7 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.rating-rainbow-plusplus{background:linear-gradient(180deg,#c70f3d 0%,#cc6827 18%,#c8a91f 34%,#318c48 50%,#258ba8 66%,#304ba8 82%,#5c1fae 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.rating-title{font-size:15px;font-weight:750;margin-top:4px;line-height:1.1}
+details summary{cursor:pointer;font-weight:700;list-style:none}details summary::-webkit-details-marker{display:none}
+details summary:before{content:"▶";display:inline-block;margin-right:8px;font-size:11px}details[open] summary:before{content:"▼"}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;vertical-align:top}th{background:#f7f7f8cc}
+.range{display:flex;align-items:center;gap:10px;margin-top:10px}.range input{padding:0;border:0}
+.result-input-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.result-input-grid>div{min-width:0}
+.hidden{display:none!important}
+.modal-backdrop{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;padding:18px;z-index:20}
+.modal-backdrop.open{display:flex}.modal{width:min(520px,100%);background:#fff;border-radius:18px;padding:20px;box-shadow:0 12px 40px #0004}
+.modal-actions{display:flex;gap:8px}.modal-actions button{margin-top:10px}
+@media(max-width:700px){
+ main{padding:10px}.header{align-items:center}.row{grid-template-columns:auto minmax(0,1fr) auto}
+ .row .resultline,.row .sharefactor,.row .actions{grid-column:2/-1}
+ .grid{grid-template-columns:1fr}.switch-wrap{margin-left:auto}
+}
+
+.settings-fab{position:relative;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.86);box-shadow:0 2px 10px #0002;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;z-index:5}
+.settings-overlay{position:fixed;inset:0;background:rgba(245,245,247,.96);z-index:30;display:none;overflow:auto}
+.settings-overlay.open{display:block}
+.settings-screen{max-width:760px;margin:auto;padding:18px}
+.settings-head{display:flex;align-items:center;gap:10px}
+.settings-head h2{margin:0}
+.back-btn{width:auto!important;margin:0!important;padding:6px 12px!important}
+.settings-menu{margin-top:16px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 10px #00000012}
+.settings-item{padding:18px;font-size:16px;border-bottom:1px solid #eee;cursor:pointer}
+.settings-item:last-child{border-bottom:0}.settings-danger{color:#d33;font-weight:700}
+.settings-item:active{background:#f3f3f3}
+</style>
+</head>
+<body>
+<div class="undo-wrap"><button id="undoButton" class="light undo-btn" onclick="undoLast()" disabled aria-label="直前の操作を戻す" title="直前の操作を戻す">←</button><button id="redoButton" class="light undo-btn" onclick="redoLast()" disabled aria-label="戻した操作を戻す" title="戻した操作を戻す">→</button></div>
+<main>
+<header class="header">
+  <div>
+    <h1>Project Sekai Rating Calculator</h1>
+    <div class="note">譜面定数とリザルトから単曲レートを計算・登録します。</div>
+  </div>
+  <div class="switch-wrap">
+    <div class="settings-fab" onclick="openSettings()" title="設定" aria-label="設定">⚙</div>
+<span id="modeName" class="mode-name">通常</span>
+    <label class="switch" title="通常 / APPEND">
+      <input id="modeSwitch" type="checkbox" onchange="setMode(this.checked?'append':'normal')">
+      <span class="slider"></span>
+    </label>
+  </div>
+</header>
+
+<section class="panel">
+<h2>単曲レート計算</h2>
+<div class="grid">
+  <div><label>楽曲レベル（譜面定数）</label><input id="level" type="text" inputmode="decimal" maxlength="5" placeholder="例：32 / 30+ / 30.5"></div>
+</div>
+<div class="result-input-grid">
+  <div><label>PERFECT</label><input id="p" type="number" min="0" placeholder="未入力は0"></div>
+  <div><label>GREAT</label><input id="g" type="number" min="0" placeholder="未入力は0"></div>
+  <div><label>GOOD</label><input id="d" type="number" min="0" placeholder="未入力は0"></div>
+  <div><label>BAD</label><input id="b" type="number" min="0" placeholder="未入力は0"></div>
+  <div><label>MISS</label><input id="m" type="number" min="0" placeholder="未入力は0"></div>
+</div>
+<p class="note">リザルトの未入力欄は0として扱います。</p>
+<div class="grid">
+  <button onclick="calculate()">計算</button>
+  <button class="light" onclick="resetInputs()">入力だけ初期化</button>
+</div>
+<div id="result" class="result">
+  <div class="small">単曲レート</div><div id="calcRating" class="big">---</div>
+  <div id="calcScore" class="small">独自スコア：---</div>
+  <div id="calcRank" class="badge" style="display:inline-block;margin-top:8px">---</div>
+</div>
+<div class="grid">
+  <button onclick="openRegister('best')">BESTに登録</button>
+  <button id="newRegisterBtn" onclick="openRegister('new')">新曲に登録</button>
+</div>
+</section>
+
+<section class="panel">
+<h2 id="overallTitle">総合Rating</h2>
+<div class="result">
+    <div id="overall" class="big rating-green">0.00</div>
+  <div id="overallRank" class="rating-title rating-green">緑</div>
+  <div id="overallNext" class="small overall-next">次のランクまであと 22.00</div>
+</div>
+
+</section>
+
+<section class="panel">
+<h2>BEST <span id="bestCount">0</span> / <span id="bestLimit">35</span></h2>
+<div id="bestList"></div>
+</section>
+
+<section id="newSection" class="panel">
+<h2>新曲 <span id="newCount">0</span> / 5</h2>
+<div id="newList"></div>
+</section>
+
+<section class="panel">
+<details>
+<summary>計算方法・スコアとレート補正値の表</summary>
+<p class="note">単曲レートは R = 0.5L + F(X) で計算します。表の基準点の間は線形補間します。1,009,000～1,010,000も線形補間します。</p>
+<div style="overflow:auto">
+<table><thead><tr><th>スコア</th><th>ランク</th><th>F(X)</th><th>R</th></tr></thead><tbody>
+<tr><td>1,010,000</td><td>SSS+</td><td>+2.20</td><td>0.5L + 2.20</td></tr>
+<tr><td>1,009,000</td><td>SSS+</td><td>+2.15</td><td>0.5L + 2.15</td></tr>
+<tr><td>1,007,500</td><td>SSS</td><td>+2.00</td><td>0.5L + 2.00</td></tr>
+<tr><td>1,005,000</td><td>SS+</td><td>+1.50</td><td>0.5L + 1.50</td></tr>
+<tr><td>1,000,000</td><td>SS</td><td>+1.00</td><td>0.5L + 1.00</td></tr>
+<tr><td>990,000</td><td>S+</td><td>+0.60</td><td>0.5L + 0.60</td></tr>
+<tr><td>975,000</td><td>S</td><td>0.00</td><td>0.5L</td></tr>
+<tr><td>950,000</td><td>AAA</td><td>−1.67</td><td>0.5L − 1.67</td></tr>
+<tr><td>925,000</td><td>AA</td><td>−3.34</td><td>0.5L − 3.34</td></tr>
+<tr><td>900,000</td><td>A</td><td>−5.00</td><td>0.5L − 5.00</td></tr>
+<tr><td>800,000</td><td>BBB</td><td>−(0.5L + 5.00) / 2</td><td>(0.5L − 5.00) / 2</td></tr>
+<tr><td>700,000</td><td>BB</td><td>線形補間</td><td>0.5L + F(X)</td></tr>
+<tr><td>600,000</td><td>B</td><td>線形補間</td><td>0.5L + F(X)</td></tr>
+<tr><td>500,000</td><td>C</td><td>−0.5L</td><td>0.00</td></tr>
+<tr><td>0</td><td>D</td><td>−0.5L</td><td>0.00</td></tr>
+</tbody></table>
+</div>
+</details>
+
+<details style="margin-top:14px">
+<summary>総合Ratingと色の一覧</summary>
+<p class="note">総合Ratingの値によって変わるRating帯を確認できます。</p>
+<div style="overflow:auto">
+<table><thead><tr><th>総合Rating</th><th>色 / ランク</th></tr></thead><tbody>
+<tr><td>19.00以上</td><td><span class="rating-rainbow-plusplus">虹++</span></td></tr>
+<tr><td>18.50～18.99</td><td><span class="rating-rainbow-plus">虹+</span></td></tr>
+<tr><td>18.00～18.49</td><td><span class="rating-rainbow">虹</span></td></tr>
+<tr><td>17.25～17.99</td><td><span class="rating-platinum">プラチナ</span></td></tr>
+<tr><td>16.50～17.24</td><td><span class="rating-gold">金</span></td></tr>
+<tr><td>15.75～16.49</td><td><span class="rating-silver">銀</span></td></tr>
+<tr><td>15.00～15.74</td><td><span class="rating-bronze">銅</span></td></tr>
+<tr><td>13.00～14.99</td><td><span class="rating-purple">紫</span></td></tr>
+<tr><td>10.00～12.99</td><td><span class="rating-red">赤</span></td></tr>
+<tr><td>7.00～9.99</td><td><span class="rating-orange">橙</span></td></tr>
+<tr><td>0.00～6.99</td><td><span class="rating-green">緑</span></td></tr>
+</tbody></table>
+</div>
+</details>
+</section>
+
+</main>
+
+
+<div id="settingsOverlay" class="settings-overlay">
+  <div class="settings-screen">
+    <div class="settings-head"><button class="light back-btn" onclick="closeSettings()">‹</button><h2>設定</h2></div>
+    <div class="settings-menu">
+      <div class="settings-item" onclick="openSettingsPage('bg')">背景変更</div>
+      <div class="settings-item" onclick="openSettingsPage('songs')">レーティング対象曲一覧</div>
+      <div class="settings-item" onclick="openSettingsPage('delete')" class="settings-item settings-danger">データ削除</div>
+    </div>
+    <div id="settingsPage"></div>
+  </div>
+</div>
+
+<div id="registerModal" class="modal-backdrop">
+<div class="modal">
+<h2>楽曲を登録</h2>
+<label>楽曲名</label><input id="songNameInput" placeholder="楽曲名を入力">
+<div id="difficultyWrap" style="margin-top:10px">
+<label>難易度</label>
+<select id="difficultyInput">
+<option value="MASTER">MASTER</option><option value="EXPERT">EXPERT</option><option value="HARD">HARD</option><option value="NORMAL">NORMAL</option><option value="EASY">EASY</option>
+</select>
+</div>
+<div id="appendNote" class="note hidden" style="margin-top:10px">APPENDモードでは難易度は自動的にAPPENDになります。</div>
+<div class="note" style="margin-top:10px">登録後はリザルト・難易度は編集できません。楽曲名のみ編集できます。</div>
+<div class="modal-actions"><button onclick="confirmRegister()">登録</button><button class="secondary" onclick="closeRegister()">キャンセル</button></div>
+</div></div>
+
+<script>
+const VERSION="psr3";
+const KEY=VERSION+"_data";
+const BACKUP_KEY=VERSION+"_data_backup";
+const BGKEY=VERSION+"_bg";
+const OPKEY=VERSION+"_opacity";
+let mode=localStorage.getItem(VERSION+"_mode")||"normal";
+let data;
+function normalizeData(loaded){
+ if(!loaded||typeof loaded!=="object"||!loaded.normal||!loaded.append)return null;
+ return {
+   normal:{
+     best:Array.isArray(loaded.normal.best)?loaded.normal.best:[],
+     new:Array.isArray(loaded.normal.new)?loaded.normal.new:[]
+   },
+   append:{
+     best:Array.isArray(loaded.append.best)?loaded.append.best:[],
+     new:Array.isArray(loaded.append.new)?loaded.append.new:[]
+   }
+ };
+}
+function dataSize(d){return d.normal.best.length+d.normal.new.length+d.append.best.length+d.append.new.length}
+function loadData(){
+ let primary=null,backup=null;
+ try{primary=normalizeData(JSON.parse(localStorage.getItem(KEY)||"null"))}catch(e){}
+ try{backup=normalizeData(JSON.parse(localStorage.getItem(BACKUP_KEY)||"null"))}catch(e){}
+ // If one copy is lost/corrupted, prefer the valid copy containing more entries.
+ let loaded=primary||backup;
+ if(primary&&backup&&dataSize(backup)>dataSize(primary))loaded=backup;
+ return loaded||{normal:{best:[],new:[]},append:{best:[],new:[]}};
+}
+data=loadData();
+let last=null,pendingType=null;
+let undoSnapshot=null;
+let redoSnapshot=null;
+function cloneData(obj){return JSON.parse(JSON.stringify(obj))}
+function setUndoSnapshot(before){undoSnapshot=cloneData(before);redoSnapshot=null;updateUndoButton()}
+function updateUndoButton(){
+ const undoBtn=document.getElementById("undoButton");
+ const redoBtn=document.getElementById("redoButton");
+ if(undoBtn)undoBtn.disabled=!undoSnapshot;
+ if(redoBtn)redoBtn.disabled=!redoSnapshot;
+}
+function undoLast(){
+ if(!undoSnapshot)return;
+ redoSnapshot=cloneData(data);
+ data=cloneData(undoSnapshot);
+ undoSnapshot=null;
+ save();
+ render();
+ updateUndoButton();
+}
+function redoLast(){
+ if(!redoSnapshot)return;
+ undoSnapshot=cloneData(data);
+ data=cloneData(redoSnapshot);
+ redoSnapshot=null;
+ save();
+ render();
+ updateUndoButton();
+}
+
+function save(){
+ const json=JSON.stringify(data);
+ let saved=false;
+ try{localStorage.setItem(KEY,json);saved=true}catch(e){}
+ try{localStorage.setItem(BACKUP_KEY,json)}catch(e){}
+ try{localStorage.setItem(VERSION+"_mode",mode)}catch(e){}
+ // If a large background image fills localStorage, retry the rating data after
+ // removing only the old backup. This keeps BEST/New data persistent.
+ if(!saved){
+   try{localStorage.removeItem(BACKUP_KEY);localStorage.setItem(KEY,json)}catch(e){}
+ }
+}
+function current(){return data[mode]}
+
+window.addEventListener("pagehide",save);
+window.addEventListener("beforeunload",save);
+
+// Mobile browsers can restore this page from bfcache without rerunning the script.
+// Reload the persisted rating data whenever the page becomes visible again.
+function refreshDataFromStorage(){
+ const latest=loadData();
+ data=latest;
+ mode=localStorage.getItem(VERSION+"_mode")||mode||"normal";
+ render();
+}
+window.addEventListener("pageshow",refreshDataFromStorage);
+window.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")refreshDataFromStorage()});
+window.addEventListener("storage",function(e){if(e.key===KEY||e.key===BACKUP_KEY||e.key===VERSION+"_mode")refreshDataFromStorage()});
+function num(id){const v=document.getElementById(id).value;return v===""?0:Math.max(0,Number(v)||0)}
+function trunc(n,d=2){const k=10**d;return Math.floor((n+1e-10)*k)/k}
+
+function scoreToBonus(score,level){
+ score=Math.min(1010000,Math.max(0,score));
+ if(score<=500000)return -0.5*level;
+ const pts=[[1010000,2.2],[1009000,2.15],[1007500,2.0],[1005000,1.5],[1000000,1.0],[990000,.6],[975000,0],[950000,-1.67],[925000,-3.34],[900000,-5],[800000,-(0.5*level+5)/2],[500000,-0.5*level]];
+ for(let i=0;i<pts.length-1;i++){const [s1,f1]=pts[i],[s2,f2]=pts[i+1];if(score<=s1&&score>=s2)return f2+(f1-f2)*(score-s2)/(s1-s2)}
+ return -0.5*level
+}
+function scoreRank(s){
+ if(s>=1009000)return"SSS+";
+ if(s>=1007500)return"SSS";
+ if(s>=1005000)return"SS+";
+ if(s>=1000000)return"SS";
+ if(s>=990000)return"S+";
+ if(s>=975000)return"S";
+ if(s>=950000)return"AAA";
+ if(s>=925000)return"AA";
+ if(s>=900000)return"A";
+ if(s>=800000)return"BBB";
+ if(s>=700000)return"BB";
+ if(s>=600000)return"B";
+ if(s>=500000)return"C";
+ return"D";
+}
+function scoreRankClass(r){return["S","S+","SS","SS+","SSS","SSS+"].includes(r)?"rank-s":["A","AA","AAA"].includes(r)?"rank-a":["BBB","BB","B"].includes(r)?"rank-bbb":r==="C"?"rank-c":"rank-d"}
+function ratingClass(r){
+ if(r>=19)return"rating-rainbow-plusplus";
+ if(r>=18.5)return"rating-rainbow-plus";
+ if(r>=18)return"rating-rainbow";
+ if(r>=17.25)return"rating-platinum";
+ if(r>=16.5)return"rating-gold";
+ if(r>=15.75)return"rating-silver";
+ if(r>=15)return"rating-bronze";
+ if(r>=13)return"rating-purple";
+ if(r>=10)return"rating-red";
+ if(r>=7)return"rating-orange";
+ return"rating-green";
+}
+function ratingName(r){
+ if(r>=19)return"虹++";if(r>=18.5)return"虹+";if(r>=18)return"虹";if(r>=17.25)return"プラチナ";
+ if(r>=16.5)return"金";if(r>=15.75)return"銀";if(r>=15)return"銅";if(r>=13)return"紫";if(r>=10)return"赤";if(r>=7)return"橙";return"緑";
+}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function difficultyClass(d){return"difficulty-"+String(d).toLowerCase()}
+function factor(){return 40}
+
+function parseLevelInput(raw){
+ const value=String(raw).trim();
+ if(/^\d+\+$/.test(value)){
+   const base=Number(value.slice(0,-1));
+   const level=base+0.5;
+   return Number.isInteger(base)&&base>=0&&level<=40.5?level:null;
+ }
+ if(!/^(?:\d+(?:\.0|\.5)?)$/.test(value))return null;
+ const level=Number(value);
+ return Number.isFinite(level)&&level>=0&&level<=40.5&&Number.isInteger(level*2)?level:null;
+}
+function calculate(){
+ const level=parseLevelInput(document.getElementById("level").value);
+ if(level===null){alert("楽曲レベルは0～40.5の範囲で、整数・0.5刻み、または「30+」の形式で入力してください。例：30、30+、30.5");return false}
+ const p=num("p"),g=num("g"),d=num("d"),b=num("b"),m=num("m"),n=p+g+d+b+m;
+ if(n<=0){alert("リザルトを1つ以上入力してください。");return false}
+ const score=Math.min(1010000,1010000*(p+.5*g+.25*d)/n);
+ const bonus=scoreToBonus(score,level),rating=Math.max(0,0.5*level+bonus);
+ last={rating,score,level,p,g,d,b,m};
+ document.getElementById("calcRating").textContent=trunc(rating,2).toFixed(2);
+ document.getElementById("calcRating").className="big "+ratingClass(rating);
+ document.getElementById("calcScore").textContent="独自スコア："+Math.floor(score).toLocaleString();
+ const rank=scoreRank(score),badge=document.getElementById("calcRank");badge.textContent=rank;badge.className="badge "+scoreRankClass(rank);
+ return true
+}
+function resetInputs(){
+ document.getElementById("level").value="";
+ ["p","g","d","b","m"].forEach(id=>document.getElementById(id).value="");
+ last=null;
+ document.getElementById("calcRating").textContent="---";document.getElementById("calcRating").className="big";
+ document.getElementById("calcScore").textContent="独自スコア：---";
+ document.getElementById("calcRank").textContent="---";document.getElementById("calcRank").className="badge";
+}
+function openRegister(type){
+ if(!last&&!calculate())return;
+ pendingType=type;document.getElementById("songNameInput").value="";
+ document.getElementById("difficultyWrap").classList.toggle("hidden",mode==="append");
+ document.getElementById("appendNote").classList.toggle("hidden",mode!=="append");
+ document.getElementById("difficultyInput").value="MASTER";
+ document.getElementById("registerModal").classList.add("open");
+ setTimeout(()=>document.getElementById("songNameInput").focus(),0)
+}
+function closeRegister(){document.getElementById("registerModal").classList.remove("open");pendingType=null}
+function entryFromLast(name,diff){return{id:crypto.randomUUID(),name:name||"曲名未設定",difficulty:diff,rating:last.rating,score:last.score,level:last.level,p:last.p,g:last.g,d:last.d,b:last.b,m:last.m,createdAt:Date.now()}}
+function sameChart(a,b){return String(a.name).trim().toLowerCase()===String(b.name).trim().toLowerCase()&&String(a.difficulty)===String(b.difficulty)}
+function clean(arr){return arr.filter(Boolean)}
+function addBest(entry){
+ const cur=current(),best=clean(cur.best);
+ const bi=best.findIndex(x=>sameChart(x,entry));
+ if(bi>=0){if(best[bi].rating>=entry.rating)return false;best.splice(bi,1)}
+ cur.new=clean(cur.new).filter(x=>!sameChart(x,entry));
+ best.push(entry);best.sort((a,b)=>b.rating-a.rating);
+ cur.best=best.slice(0,mode==="append"?40:35);
+ return true
+}
+function addNew(entry){
+ const cur=current(),best=clean(cur.best),news=clean(cur.new);
+ const bi=best.findIndex(x=>sameChart(x,entry)),ni=news.findIndex(x=>sameChart(x,entry));
+ if(bi>=0&&best[bi].rating>=entry.rating)return false;
+ if(ni>=0&&news[ni].rating>=entry.rating)return false;
+ if(bi>=0)best.splice(bi,1);if(ni>=0)news.splice(ni,1);
+ news.push(entry);news.sort((a,b)=>b.rating-a.rating);
+ while(news.length>5){const pushed=news.pop();best.push(pushed);best.sort((a,b)=>b.rating-a.rating);best.splice(35)}
+ cur.new=news;cur.best=best.slice(0,35);return true
+}
+function confirmRegister(){
+ if(!last)return;
+ const name=document.getElementById("songNameInput").value.trim()||"曲名未設定";
+ const diff=mode==="append"?"APPEND":document.getElementById("difficultyInput").value;
+ const entry=entryFromLast(name,diff);
+ const before=cloneData(data);
+ const ok=pendingType==="best"||mode==="append"?addBest(entry):addNew(entry);
+ if(!ok){closeRegister();alert("同じ楽曲・難易度のうち、すでに高い単曲レートが登録されています。");return}
+ setUndoSnapshot(before);save();render();closeRegister()
+}
+function editName(type,index){
+ const item=current()[type][index],next=prompt("楽曲名を変更してください",item.name);
+ if(next===null)return;const before=cloneData(data);item.name=next.trim()||"曲名未設定";setUndoSnapshot(before);save();render()
+}
+function removeEntry(type,index){if(!confirm("この登録を削除しますか？"))return;const before=cloneData(data);current()[type].splice(index,1);setUndoSnapshot(before);save();render()}
+
+function moveEntry(type,index){
+ const cur=current();
+ const from=cur[type];
+ if(!from || !from[index]) return;
+ const item=from[index];
+ const toType=type==="new"?"best":"new";
+ const to=cur[toType];
+ const toLimit=toType==="best"?(mode==="append"?40:35):5;
+ const message=type==="new"
+   ?`「${item.name}」を新曲枠からBEST枠へ移動しますか？`
+   :`「${item.name}」をBEST枠から新曲枠へ移動しますか？`;
+ if(!confirm(message)) return;
+ const before=cloneData(data);
+ from.splice(index,1);
+ const duplicate=to.findIndex(x=>sameChart(x,item));
+ if(duplicate>=0) to.splice(duplicate,1);
+ to.push(item);
+ to.sort((a,b)=>Number(b.rating||0)-Number(a.rating||0));
+ if(to.length>toLimit){
+   const overflow=to.pop();
+   // 新曲→BESTの場合、BESTから押し出された曲は新曲枠へ戻さず削除する。
+   if(type!=="new") {
+     from.push(overflow);
+     from.sort((a,b)=>Number(b.rating||0)-Number(a.rating||0));
+   }
+ }
+ cur.best=clean(cur.best).sort((a,b)=>b.rating-a.rating).slice(0,mode==="append"?40:35);
+ cur.new=mode==="normal"?clean(cur.new).sort((a,b)=>b.rating-a.rating).slice(0,5):[];
+ setUndoSnapshot(before);save();render();
+}
+function renderList(id,arr,type){
+ const el=document.getElementById(id);el.innerHTML="";
+ arr.forEach((item,i)=>{
+  const row=document.createElement("div");row.className="row";
+  const pos=document.createElement("span");pos.textContent=`${i+1}位`;
+  const meta=document.createElement("div");meta.className="meta";
+  const name=document.createElement("span");name.className="song-name";name.textContent=item.name;
+  const diff=document.createElement("span");diff.className="badge "+difficultyClass(item.difficulty);diff.textContent=item.difficulty;
+  const rank=document.createElement("span");rank.className="badge "+scoreRankClass(scoreRank(item.score));rank.textContent=scoreRank(item.score);
+  const rating=document.createElement("b");rating.className="rating "+ratingClass(item.rating);rating.textContent=trunc(item.rating,2).toFixed(2);
+  const actions=document.createElement("div");actions.className="actions";
+  const move=document.createElement("button");move.className="move-btn";move.textContent=type==="new"?"↑":"↓";move.title=type==="new"?"BEST枠へ移動":"新曲枠へ移動";move.setAttribute("aria-label",move.title);move.onclick=()=>moveEntry(type,i);
+  const edit=document.createElement("button");edit.className="secondary";edit.textContent="曲名編集";edit.onclick=()=>editName(type,i);
+  const del=document.createElement("button");del.className="danger";del.textContent="削除";del.onclick=()=>removeEntry(type,i);
+  if(!(mode==="append"&&type==="best")) actions.append(move); actions.append(edit,del);meta.append(name,diff,rank);
+  const details=document.createElement("div");details.className="song-details";
+  const r=document.createElement("div");r.className="resultline";r.textContent=`リザルト ${item.p}-${item.g}-${item.d}-${item.b}-${item.m}`;
+  const scoreInfo=document.createElement("div");scoreInfo.className="resultline";scoreInfo.textContent=`スコア ${Math.round(Number(item.score)||0).toLocaleString()}`;
+  const f=document.createElement("div");f.className="sharefactor";f.textContent=`単曲レート÷${factor()} = ${trunc(item.rating/factor(),4).toFixed(4)}`;
+  details.append(r,scoreInfo,f);
+  row.append(pos,meta,rating,actions);el.append(row,details)
+ });
+ if(!arr.length)el.innerHTML='<div class="small">まだ登録されていません。</div>'
+}
+function nextRatingInfo(total){
+  const thresholds=[{value:7,name:"橙"},{value:10,name:"赤"},{value:13,name:"紫"},{value:15,name:"銅"},{value:15.75,name:"銀"},{value:16.5,name:"金"},{value:17.25,name:"プラチナ"},{value:18,name:"虹"},{value:18.5,name:"虹+"},{value:19,name:"虹++"}];
+  for(const t of thresholds){if(total<t.value)return `次のランク「${t.name}」まであと ${(t.value-total).toFixed(2)}`;}
+  return "---";
+}
+function render(){
+ const cur=current();cur.best=clean(cur.best).sort((a,b)=>b.rating-a.rating).slice(0,mode==="append"?40:35);cur.new=mode==="normal"?clean(cur.new).sort((a,b)=>b.rating-a.rating).slice(0,5):[];
+ document.getElementById("bestCount").textContent=cur.best.length;document.getElementById("bestLimit").textContent=mode==="normal"?35:40;document.getElementById("newCount").textContent=cur.new.length;
+ renderList("bestList",cur.best,"best");renderList("newList",cur.new,"new");
+ const total=([...cur.best,...cur.new].reduce((s,x)=>s+Number(x.rating||0),0))/factor();
+ const overall=document.getElementById("overall");overall.textContent=trunc(total,2).toFixed(2);overall.className="big "+ratingClass(total);
+ const rb=document.getElementById("overallRank");rb.textContent=ratingName(total);rb.className="rating-title "+ratingClass(total);
+ document.getElementById("overallNext").textContent=nextRatingInfo(total);
+ document.getElementById("newSection").classList.toggle("hidden",mode==="append");document.getElementById("newRegisterBtn").classList.toggle("hidden",mode==="append");
+ 
+ document.getElementById("overallTitle").textContent=mode==="normal"?"総合Rating":"APPEND Rating";
+ document.getElementById("modeName").textContent=mode==="normal"?"通常":"APPEND";document.getElementById("modeSwitch").checked=mode==="append";
+ updateUndoButton();
+}
+function setMode(next){mode=next;resetInputs();render()}
+function resetAll(){
+ if(!confirm("通常・APPENDの登録データと設定をすべて削除しますか？"))return;
+ const before=cloneData(data);data={normal:{best:[],new:[]},append:{best:[],new:[]}};setUndoSnapshot(before);localStorage.removeItem(KEY);localStorage.removeItem(BACKUP_KEY);resetInputs();render()
+}
+function setBackground(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{localStorage.setItem(BGKEY,reader.result);applyBackground()};reader.readAsDataURL(file)}
+function applyBackground(){
+ const bg=localStorage.getItem(BGKEY);
+ document.body.style.backgroundImage=bg ? 'url("' + bg + '")' : "none";
+ document.body.style.backgroundColor="#fff";
+}
+function clearBackground(){
+ localStorage.removeItem(BGKEY);
+ const f=document.getElementById("bgFileSettings")||document.getElementById("bgFile");
+ if(f)f.value="";
+ document.body.style.backgroundImage="none";
+ document.body.style.backgroundColor="#fff";
+}
+function setPanelOpacity(v){
+ const n=Math.max(0,Math.min(1,Number(v)));
+ localStorage.setItem(OPKEY,String(n));
+ document.documentElement.style.setProperty("--panel-alpha",String(n));
+ const value=Math.round(n*100)+"%";
+ document.querySelectorAll("[data-opacity-value],#opacitySettingsValue").forEach(el=>el.textContent=value);
+}
+function loadSettings(){
+ applyBackground();
+ const v=Number(localStorage.getItem(OPKEY)||".78");document.getElementById("opacity").value=v;setPanelOpacity(v)
+}
+loadSettings();render();
+
+function openSettings(){document.getElementById("settingsOverlay").classList.add("open");document.querySelector(".undo-wrap").style.display="none";showSettingsMenu()}
+function closeSettings(){document.getElementById("settingsOverlay").classList.remove("open");document.querySelector(".undo-wrap").style.display="";document.getElementById("settingsPage").innerHTML=""}
+function showSettingsMenu(){document.getElementById("settingsPage").innerHTML=""}
+function openSettingsPage(page){
+ const el=document.getElementById("settingsPage");
+ if(page==="bg"){
+   el.innerHTML='<section class="panel"><h2>背景変更</h2><p class="note">画像を選択すると背景に設定されます。白背景の濃さはバーで調整できます。</p><div class="range"><label style="margin:0;min-width:150px">白背景の濃さ</label><input id="opacitySettings" type="range" min="0" max="1" step="0.01" value="'+Number(localStorage.getItem(OPKEY)||".78")+'" oninput="setPanelOpacity(this.value)"><span id="opacitySettingsValue" data-opacity-value data-opacity-value data-opacity-value>'+Math.round(Number(localStorage.getItem(OPKEY)||".78")*100)+'%</span></div><button class="light" onclick="document.getElementById(\'bgFileSettings\').click()">背景画像を設定</button><input id="bgFileSettings" class="hidden" type="file" accept="image/*" onchange="setBackground(event)"><button class="secondary" onclick="clearBackground()">背景を初期状態に戻す</button></section>'; const ov=Number(localStorage.getItem(OPKEY)||".78");setPanelOpacity(ov);
+ } else if(page==="delete"){
+   el.innerHTML='<section class="panel"><h2>データ削除</h2><button class="danger" onclick="deleteOnly(\'normal\')">通常のみ削除</button><button class="danger" onclick="deleteOnly(\'append\')">APPENDのみ削除</button><button class="danger" onclick="resetAll()">全データ削除</button></section>';
+ } else {
+   renderTargetExport(el);
+ }
+}
+function deleteOnly(which){
+ if(!confirm((which==="normal"?"通常":"APPEND")+"の登録データを削除しますか？"))return;
+ const before=cloneData(data);data[which]={best:[],new:[]};setUndoSnapshot(before);save();render();openSettingsPage("delete");
+}
+function renderTargetExport(el){
+ const cur=current();
+ const best=cur.best.slice(0,mode==="append"?40:35), fresh=mode==="normal"?cur.new.slice(0,5):[];
+ const cards=arr=>arr.map(x=>{const rank=scoreRank(Number(x.score)||0);return '<div class="export-card"><div class="export-name">'+esc(x.name)+'</div><div class="export-info"><span class="export-rating '+ratingClass(x.rating)+'">'+trunc(x.rating,2).toFixed(2)+'</span><span class="export-rank '+scoreRankClass(rank)+'">'+rank+'</span><span class="export-level">譜面定数 '+Number(x.level).toFixed(1)+'</span></div><div class="export-score">スコア '+Math.round(Number(x.score)||0).toLocaleString()+'</div></div>'}).join("");
+ let html='<section class="panel"><h2>レーティング対象曲一覧</h2><p class="note">BEST枠と新曲枠を分けて表示します。</p><div id="exportSheet" class="export-sheet">';
+ html+='<section class="export-section"><h3>BEST枠</h3><div class="export-grid">'+cards(best)+'</div></section>';
+ if(mode==="normal") html+='<section class="export-section export-new"><h3>新曲枠</h3><div class="export-grid">'+cards(fresh)+'</div></section>';
+ html+='</div><button onclick="saveTargetImage()">画像を保存</button></section>'; el.innerHTML=html;
+}
+function saveTargetImage(){
+ const sheet=document.getElementById("exportSheet");
+ const cur=current();
+ if(!sheet){alert("画像保存の対象が見つかりません。");return;}
+ const sections=[...sheet.querySelectorAll(".export-section")];
+ const cols=5,w=1400,gap=12,margin=24,cw=(w-margin*2-gap*(cols-1))/cols,ch=100;
+ let totalRows=0;
+ sections.forEach(sec=>{const n=sec.querySelectorAll(".export-card").length;totalRows+=1+Math.max(1,Math.ceil(n/cols));});
+ const curTotal=([...cur.best,...cur.new].reduce((sum,x)=>sum+Number(x.rating||0),0))/factor();
+ const canvas=document.createElement("canvas");canvas.width=w;canvas.height=98+totalRows*(ch+gap)+margin;
+ const ctx=canvas.getContext("2d");
+ if(!ctx){alert("画像を生成できませんでした。");return;}
+ ctx.fillStyle="#fff";ctx.fillRect(0,0,w,canvas.height);
+ ctx.fillStyle="#222";ctx.font="bold 24px system-ui";ctx.fillText("レーティング対象曲一覧",margin,32);
+ ctx.font="bold 18px system-ui";ctx.fillStyle="#222";ctx.fillText("総合Rating",margin,62);
+ ctx.font="bold 24px system-ui";ctx.fillStyle=ratingCanvasStyle(curTotal,margin,38,28);ctx.fillText(trunc(curTotal,2).toFixed(2),margin+120,62);
+ ctx.font="bold 17px system-ui";ctx.fillText(ratingName(curTotal),margin+215,62);
+ let y=94;
+ function ratingCanvasStyle(rating,x,cy,h){
+   const c=ratingClass(Number(rating));
+   const colors={"rating-green":"#41a957","rating-orange":"#e48a24","rating-red":"#df4b4b","rating-purple":"#7b4bb7","rating-bronze":"#b4773f","rating-silver":"#888","rating-gold":"#d1a92a","rating-platinum":"#ead9a5"};
+   if(colors[c])return colors[c];
+   const g=ctx.createLinearGradient(0,cy,0,cy+h);
+   if(c.includes("plusplus")){g.addColorStop(0,"#c70f3d");g.addColorStop(.18,"#cc6827");g.addColorStop(.34,"#c8a91f");g.addColorStop(.50,"#318c48");g.addColorStop(.66,"#258ba8");g.addColorStop(.82,"#304ba8");g.addColorStop(1,"#5c1fae");}
+   else if(c.includes("plus")){g.addColorStop(0,"#e9274e");g.addColorStop(.18,"#ed8431");g.addColorStop(.34,"#e8c52f");g.addColorStop(.50,"#42ad59");g.addColorStop(.66,"#31a9ca");g.addColorStop(.82,"#3b5fca");g.addColorStop(1,"#7433c7");}
+   else{g.addColorStop(0,"#ff3f5f");g.addColorStop(.18,"#ff9f43");g.addColorStop(.34,"#ffe04b");g.addColorStop(.50,"#58c96b");g.addColorStop(.66,"#43c8e8");g.addColorStop(.82,"#4b78e8");g.addColorStop(1,"#8a45d6");}
+   return g;
+ }
+ sections.forEach(sec=>{
+   ctx.fillStyle="#222";ctx.font="bold 19px system-ui";ctx.fillText(sec.querySelector("h3").textContent,margin,y+20);y+=34;
+   const cards=[...sec.querySelectorAll(".export-card")];
+   cards.forEach((card,i)=>{
+     const x=margin+(i%cols)*(cw+gap),cy=y+Math.floor(i/cols)*(ch+gap);
+     ctx.strokeStyle="#ddd";ctx.strokeRect(x,cy,cw,ch);
+     ctx.fillStyle="#222";ctx.font="bold 15px system-ui";ctx.fillText(card.querySelector(".export-name").textContent.slice(0,28),x+10,cy+28);
+     const ratingText=card.querySelector(".export-rating").textContent;
+     ctx.font="bold 20px system-ui";ctx.fillStyle=ratingCanvasStyle(parseFloat(ratingText),x,cy+39,23);ctx.fillText(ratingText,x+10,cy+58);
+     const rankEl=card.querySelector(".export-rank"),rankText=rankEl.textContent;
+     ctx.font="bold 13px system-ui";
+     let rankTextColor;
+     if(rankText==="SSS+"){
+       rankTextColor=ctx.createLinearGradient(x+10,cy+66,x+10,cy+82);
+       rankTextColor.addColorStop(0,"#e9274e");rankTextColor.addColorStop(.18,"#ed8431");rankTextColor.addColorStop(.34,"#e8c52f");rankTextColor.addColorStop(.50,"#42ad59");rankTextColor.addColorStop(.66,"#31a9ca");rankTextColor.addColorStop(.82,"#3b5fca");rankTextColor.addColorStop(1,"#7433c7");
+     }else if(rankText.startsWith("S")){
+       rankTextColor=ctx.createLinearGradient(x+10,cy+66,x+10,cy+82);
+       rankTextColor.addColorStop(0,"#ff3f5f");rankTextColor.addColorStop(.18,"#ff9f43");rankTextColor.addColorStop(.34,"#ffe04b");rankTextColor.addColorStop(.50,"#58c96b");rankTextColor.addColorStop(.66,"#43c8e8");rankTextColor.addColorStop(.82,"#4b78e8");rankTextColor.addColorStop(1,"#8a45d6");
+     }else if(rankText.startsWith("A")) rankTextColor="#d1a000";
+     else if(rankText.startsWith("B")) rankTextColor="#159bc4";
+     else if(rankText==="C") rankTextColor="#df4b4b";
+     else rankTextColor="#41a957";
+     ctx.fillStyle=rankTextColor;ctx.fillText(rankText,x+10,cy+78);
+     ctx.font="11px system-ui";ctx.fillStyle="#666";ctx.fillText(card.querySelector(".export-level").textContent,x+80,cy+79);
+     const scoreEl=card.querySelector(".export-score");
+     if(scoreEl){ctx.font="11px system-ui";ctx.fillText(scoreEl.textContent,x+10,cy+94);}
+   });
+   y+=Math.max(1,Math.ceil(cards.length/cols))*(ch+gap);
+ });
+ const dataUrl=canvas.toDataURL("image/png");
+ const link=document.createElement("a");
+ link.href=dataUrl;link.download="rating-target-list.png";link.style.display="none";
+ document.body.appendChild(link);
+ try{link.click();}finally{link.remove();}
+}
+
+</script>
+</body>
+</html>
+<style>
+.settings-fab{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:0 2px 8px #0002;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;margin:0 auto 6px}
+.export-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.export-card{min-height:88px;height:88px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.export-name{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.export-info{display:flex;align-items:baseline;gap:9px;margin-top:5px;white-space:nowrap}
+.export-rating{font-size:17px;font-weight:800}.export-rank{display:inline-block;padding:2px 5px;border-radius:4px;font-size:10px;font-weight:800;line-height:1.2}.export-level{font-size:11px;color:#666}.export-score{font-size:10px;color:#666;margin-top:3px}
+</style><style>
+.settings-fab{
+position:relative!important;display:flex!important;visibility:visible!important;opacity:1!important;
+width:36px;height:36px;border-radius:50%;margin:0 auto 6px;
+align-items:center;justify-content:center;background:rgba(255,255,255,.92);
+box-shadow:0 2px 8px rgba(0,0,0,.14);font-size:20px;line-height:1;cursor:pointer;z-index:20
+}
+</style><style>
+.export-section{margin-top:14px}.export-section h3{margin:0 0 8px;font-size:16px}
+.export-new{margin-top:20px;padding-top:14px;border-top:2px solid #eee}
+</style>
